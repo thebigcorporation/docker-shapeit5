@@ -1,0 +1,24 @@
+ARG BUILDER
+ARG BASE_IMAGE
+
+FROM $BUILDER as builder
+
+ARG RUN_CMD
+
+# Using the TOOLS target, compile all binaries by copying over a new Makefile
+WORKDIR /src/shapeit5/${RUN_CMD}
+COPY src/Makefile makefile
+RUN make clean && \
+	make -j static_exe_docker && \
+	cp bin/${RUN_CMD}_static /usr/local/bin/${RUN_CMD}
+
+FROM $BASE_IMAGE
+
+ARG RUN_CMD
+
+COPY --from=builder /usr/local/bin/$RUN_CMD /usr/local/bin/$RUN_CMD
+RUN chmod +x /usr/local/bin/$RUN_CMD
+
+ARG ENTRY="/entrypoint.sh"
+RUN echo "#!/bin/bash\n$RUN_CMD \$@" > ${ENTRY} && chmod ugo+rx ${ENTRY}
+ENTRYPOINT [ "/entrypoint.sh" ]
