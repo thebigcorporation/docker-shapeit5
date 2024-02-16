@@ -2,7 +2,7 @@
 
 ORG_NAME ?= hihg-um
 OS_BASE ?= ubuntu
-OS_VER ?= 23.10
+OS_VER ?= 22.04
 
 IMAGE_REPOSITORY ?=
 
@@ -60,8 +60,7 @@ $(TOOLS):
 		-f Dockerfile.$(DOCKER_BASE) \
 		-t $(ORG_NAME)/$@:$(DOCKER_TAG) \
 		$(DOCKER_BUILD_ARGS) \
-		--build-arg BUILDER=$(ORG_NAME)/$(DOCKER_BASE):$(DOCKER_TAG) \
-		--build-arg BASE_IMAGE=$(OS_BASE):$(OS_VER) \
+		--build-arg BASE_IMAGE=$(ORG_NAME)/$(DOCKER_BASE):$(DOCKER_TAG) \
 		--build-arg RUN_CMD=$@ \
 		.
 

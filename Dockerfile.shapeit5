@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
-ARG BUILDER
 ARG BASE_IMAGE
 
-FROM $BUILDER as builder
+FROM $BASE_IMAGE as builder
 
 LABEL org.opencontainers.image.title="Shapeit5 builder"
 LABEL org.opencontainers.image.description="Shapeit5 from https://github.com/odelaneau/shapeit5"
@@ -12,15 +11,25 @@ LABEL org.opencontainers.image.licences="GPL v2"
 LABEL org.opencontainers.image.vendor="The John P. Hussman Institute for Human Genomics at The University of Miami Miller School of Medicine"
 LABEL org.opencontainers.image.authors="kms309@med.miami.edu"
 
+RUN DEBIAN_FRONTEND=noninteractive apt -y install \
+	apt-utils autoconf build-essential gcc git g++ make \
+	libboost-all-dev libbz2-dev libcurl4-gnutls-dev \
+	libgcrypt20-dev libhts-dev liblzma-dev libssl-dev zlib1g-dev
+
+WORKDIR /usr/src
+RUN git clone -b shapeit5_docker --recurse-submodules \
+	https://github.com/hihg-um/shapeit5.git
+
+WORKDIR /usr/src/shapeit5/
+
 ARG RUN_CMD
+RUN echo "Building $RUN_CMD"
 
-# Using the TOOLS target, compile all binaries by copying over a new Makefile
-WORKDIR /src/shapeit5/${RUN_CMD}
-COPY src/Makefile makefile
-RUN make clean && make -j static_exe_docker && \
-	cp bin/${RUN_CMD}_static /usr/local/bin/${RUN_CMD}
+RUN pwd && ls -l && cat makefile && make clean && make -j all
 
-FROM $BASE_IMAGE
+FROM builder
+
+ARG RUN_CMD
 
 LABEL org.opencontainers.image.title="Shapeit5 binaries"
 LABEL org.opencontainers.image.description="Shapeit5 from https://github.com/odelaneau/shapeit5"
@@ -31,10 +40,7 @@ LABEL org.opencontainers.image.title="shapeit5"
 LABEL org.opencontainers.image.vendor="The John P. Hussman Institute for Human Genomics at The University of Miami Miller School of Medicine"
 LABEL org.opencontainers.image.authors="kms309@med.miami.edu"
 
-ARG RUN_CMD
-
-COPY --from=builder /usr/local/bin/$RUN_CMD /usr/local/bin/$RUN_CMD
-RUN chmod +x /usr/local/bin/$RUN_CMD
+COPY --from=builder --chmod=0555 /src/shapeit5/bin/$RUN_CMD /usr/local/bin/$RUN_CMD
 
 ARG ENTRY="/entrypoint.sh"
 RUN echo "#!/bin/bash\n$RUN_CMD \$@" > ${ENTRY} && chmod ugo+rx ${ENTRY}
