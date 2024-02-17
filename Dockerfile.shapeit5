@@ -25,7 +25,7 @@ WORKDIR /usr/src/shapeit5/
 ARG RUN_CMD
 RUN echo "Building $RUN_CMD"
 
-RUN pwd && ls -l && cat makefile && make clean && make -j all
+RUN make clean && make -j all
 
 FROM builder
 
@@ -40,7 +40,7 @@ LABEL org.opencontainers.image.title="shapeit5"
 LABEL org.opencontainers.image.vendor="The John P. Hussman Institute for Human Genomics at The University of Miami Miller School of Medicine"
 LABEL org.opencontainers.image.authors="kms309@med.miami.edu"
 
-COPY --from=builder --chmod=0555 /src/shapeit5/bin/$RUN_CMD /usr/local/bin/$RUN_CMD
+COPY --from=builder --chmod=0555 /usr/src/shapeit5/$RUN_CMD/bin/$RUN_CMD /usr/local/bin/
 
 ARG ENTRY="/entrypoint.sh"
 RUN echo "#!/bin/bash\n$RUN_CMD \$@" > ${ENTRY} && chmod ugo+rx ${ENTRY}
