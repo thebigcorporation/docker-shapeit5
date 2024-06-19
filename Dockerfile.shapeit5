@@ -1,20 +1,26 @@
 # SPDX-License-Identifier: GPL-2.0
-ARG BASE_IMAGE
+ARG BASE
+FROM $BASE as builder
 
-FROM $BASE_IMAGE as builder
-
-LABEL org.opencontainers.image.title="Shapeit5 builder"
-LABEL org.opencontainers.image.description="Shapeit5 from https://github.com/odelaneau/shapeit5"
-LABEL org.opencontainers.image.url="https://github.com/hihg-um/docker-shapeit5"
-LABEL org.opencontainers.image.version="5.1.1"
-LABEL org.opencontainers.image.licences="GPL v2"
-LABEL org.opencontainers.image.vendor="The John P. Hussman Institute for Human Genomics at The University of Miami Miller School of Medicine"
-LABEL org.opencontainers.image.authors="kms309@med.miami.edu"
-
-RUN DEBIAN_FRONTEND=noninteractive apt -y install \
-	apt-utils autoconf build-essential gcc git g++ make \
-	libboost-all-dev libbz2-dev libcurl4-gnutls-dev \
-	libgcrypt20-dev libhts-dev liblzma-dev libssl-dev zlib1g-dev
+RUN apt -y update -qq && DEBIAN_FRONTEND=noninteractive apt -y install \
+	--no-install-recommends --no-install-suggests \
+	apt-utils \
+	autoconf \
+	build-essential \
+	gcc \
+	git \
+	g++ \
+	make \
+	libboost-all-dev \
+	libbz2-dev \
+	libcurl4-gnutls-dev \
+	libgcrypt20-dev \
+	libhts-dev \
+	liblzma-dev \
+	libssl-dev \
+	zlib1g-dev \
+	&& \
+	apt -y clean && rm -rf /var/lib/apt/lists/* /tmp/*
 
 WORKDIR /usr/src
 RUN git clone -b shapeit5_docker --recurse-submodules \
@@ -22,14 +28,18 @@ RUN git clone -b shapeit5_docker --recurse-submodules \
 
 WORKDIR /usr/src/shapeit5/
 
-ARG RUN_CMD
-RUN echo "Building $RUN_CMD"
-
 RUN make clean && make -j all
 
-FROM builder
-
+FROM $BASE
+ARG BASE
 ARG RUN_CMD
+
+COPY --from=builder --chmod=0555 /usr/src/shapeit5/$RUN_CMD/bin/${RUN_CMD} /usr/local/bin/
+COPY --chmod=0555 src/test/${RUN_CMD}.sh /test.sh
+
+ARG ENTRY="/entrypoint.sh"
+RUN echo "#!/bin/bash\n${RUN_CMD} \$@" > ${ENTRY} && chmod ugo+rx ${ENTRY}
+ENTRYPOINT [ "/entrypoint.sh" ]
 
 LABEL org.opencontainers.image.title="Shapeit5 binaries"
 LABEL org.opencontainers.image.description="Shapeit5 from https://github.com/odelaneau/shapeit5"
@@ -40,8 +50,3 @@ LABEL org.opencontainers.image.title="shapeit5"
 LABEL org.opencontainers.image.vendor="The John P. Hussman Institute for Human Genomics at The University of Miami Miller School of Medicine"
 LABEL org.opencontainers.image.authors="kms309@med.miami.edu"
 
-COPY --from=builder --chmod=0555 /usr/src/shapeit5/$RUN_CMD/bin/$RUN_CMD /usr/local/bin/
-
-ARG ENTRY="/entrypoint.sh"
-RUN echo "#!/bin/bash\n$RUN_CMD \$@" > ${ENTRY} && chmod ugo+rx ${ENTRY}
-ENTRYPOINT [ "/entrypoint.sh" ]
